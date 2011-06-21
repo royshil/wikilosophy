@@ -1,0 +1,68 @@
+Tools for parsing the Wikipedia database in the MediaWiki format, and (potentialy) distributed tools for getting the linkage scheme of the complete database.
+
+Where To Start
+--------------
+First you should download a dump of the Wikipedia databse: http://en.wikipedia.org/wiki/Wikipedia:Database_download
+
+Then, use the distributed tools: zmq_wikiartcile_server.py and zmq_wikiarticle_client.py
+They are based on a ZeroMQ pipe that shuffles the raw articles from the database onto worker processes.
+
+The server looks for the "enwiki-latest-pages-articles.xml" file that is contained in the tar.gz you downloaded.
+It opens a ZMMQ server on port 5555 and waits for the clients to request an article.
+
+To start the clients pool run 'python article_clients_runner.py'
+It will open 7 (configurable...) processes of the 'zmw_wikiarticle_client' module.
+Each client requests a page, parses it using pyparsing (more on this here: http://www.morethantechnical.com/2011/06/16/getting-all-the-links-from-a-mediawiki-format-using-pyparsing/) and saves all the first found links in a text file.
+
+The client can be debugged by running 'python zmw_wikiarticle_client.py raw_article.txt'
+
+The workers take some hours to complete parsing the whole DB. This process can be greatly parallelized, distributed, etc., as you can run the workers in a cluster. The work is CPU intensive.
+
+The parser code exists in simpleWiki.py.
+
+First-Link Paths
+----------------
+So far for generic parsing, I moved on to get the first-link-path (http://en.wikipedia.org/wiki/Wikipedia_talk:Get_to_Philosophy#A_plea_to_the_authors_of_the_tools_at_ryanelmquist.com_and_xefer.com).
+
+After the workers are done, you will end up with links_*.DOT files
+They are in the DOT language format, which means GraphViz and other can read them, but they can't really be visualized as the linkage is way too dense...
+So the next step is to run:
+
+cat links_* > links_all.DOT
+python parselinks.py links_all.DOT
+
+This will build a KyotoCabinet (http://fallabs.com/kyotocabinet/pythondoc/) HashDB of all the linkage: tempcabinet.kch. 
+It should be ~600Mb.
+
+The next step is traversing the first-link paths for all articles, and it is done using mapper.py and reducer.py.
+As the names may suggest this is kind of a map-reduce approach to the problem, although as it turned out it doesn't really require a full blown map-reduce run. It is multi-proccess so any multi-core machine with >8Gb RAM does a very quick job.
+
+To start the process just run './run_mapper_reducer.sh'
+It should create a snapshot of the HashDB that will be loaded into memory by all worker processes. This greatly reduces (to 0...) the I/O intensity of the processing, making it even more nicely parallelizable.
+
+The process take a few minutes, depending on your setup (make sure to keep the # of workers below your # of CPU cores, because python's stack is a heavy context-switch for the CPU), and should end with a single file called: outputX.dot.
+That file should be easily visualized by any software (example: http://fluid.media.mit.edu/people/roy/media/tree_of_knowledge5.png).
+I used the excellent Gephi (http://gephi.org/)
+
+The result contains the culled network, with weights appropriately set for edges and nodes, and node's labels also set for nice visualization.
+Node weight is determined by the number of first-link-paths going through it, edge weight is essentially the same.
+
+For example the outputX.dot may look like:
+
+digraph {
+phenomenon [weight=720546,label="Phenomenon"];
+baal_teshuva_movement -> phenomenon [weight=2];
+feedback -> phenomenon [weight=58];
+phenomena -> phenomenon [weight=42];
+the_spooklight -> phenomenon [weight=2];
+tea_leaf_paradox -> phenomenon [weight=1];
+cognitive_capture -> phenomenon [weight=1];
+...
+}
+
+Acknowledgements
+----------------
+Thanks for Aaron Zinman and Doug Fritz for their help.
+
+Enjoy!
+Roy.
