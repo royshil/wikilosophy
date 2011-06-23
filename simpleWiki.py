@@ -16,6 +16,37 @@ def getMediaWikiFirstLink(text):
 
 	return firstlink
 
+
+def getNthLink(text,N):
+	links = parseMediaWiki(text)
+	if len(links) == 0:
+		raise ParseException('no links found')
+	links = [ln for ln in links if re.search('^(file|image)',ln.lower()) is None]
+	if len(links) < N:
+		Nlink = links[-1]	#take the last one...
+	else:
+		Nlink = links[N-1]
+	if Nlink.find('|') > -1:
+		Nlink = Nlink[:Nlink.find('|')]
+
+	return Nlink
+
+def getNFirstLinks(text,N):
+	links = parseMediaWiki(text)
+	if len(links) == 0:
+		raise ParseException('no links found')
+	links = [ln for ln in links if re.search('^(file|image)',ln.lower()) is None]
+	if len(links) < N:
+		Nlinks = links
+	else:
+		Nlinks = links[0:N-1]
+	returnLinks = []
+	for ln in Nlinks:
+		if ln.find('|') > -1:
+			ln = ln[:ln.find('|')]
+		returnLinks.append(ln)
+	return returnLinks
+
 def parseMediaWiki(text):
 
 	# ############################# Grammer #################################

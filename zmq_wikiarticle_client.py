@@ -64,7 +64,8 @@ def writeLink(title,link,fh):
 
 class article_client:
 	def __init__(self,outputfile,number=-1):
-		self.linksFile = outputfile
+		self.linksFiles = [idx+"_"+outputfile for idx in ["third","forth","fifth"]] #outputfile
+		self.linksFilesHandles = [open(filename,'w') for filename in self.linksFiles]
 		self.title = 'temp'
 		self.number = number
 
@@ -128,8 +129,12 @@ class article_client:
 		#if root.find("redirect") != None:
 		#link = getFirstLink(article_text)
 		try:
-			link = simpleWiki.getMediaWikiFirstLink(article_text)
-			writeLink(self.title,link,self.linksFile)
+			#link = simpleWiki.getMediaWikiFirstLink(article_text)
+			links = simpleWiki.getNFirstLinks(article_text,5) # get first 5 links
+			#link = simpleWiki.getNthLink(article_text,2)
+			for i in range(0,2):				# scan the last 3 (link # 3,4,5)
+				link = links[2+i]
+				writeLink(self.title,link,self.linksFilesHandles[i]) # write each link to a diff file
 		except:
 			exc_type, exc_value, exc_traceback = sys.exc_info()
 			traceback.print_tb(exc_traceback, limit=1, file=sys.stderr)
@@ -142,6 +147,14 @@ class article_client:
 #		return self.parseText(article_text)	
 
 	def parseText(self,article_text):
+		try:
+			#link = simpleWiki.getMediaWikiFirstLink(article_text)
+			link = simpleWiki.getNthLink(article_text,2)
+			writeLink(self.title,link,self.linksFile)
+		except:
+			exc_type, exc_value, exc_traceback = sys.exc_info()
+			traceback.print_tb(exc_traceback, limit=1, file=sys.stderr)
+		'''
 		article_text = removeBalanced(article_text,'{{','}}')
 		#article_text = removeBalanced(article_text,'(',')')
 
@@ -160,11 +173,12 @@ class article_client:
 
 		firstlink = getFirstLink(article_text)
 		writeLink(self.title,firstlink,self.linksFile)
+		'''
 
 		return True
 
 if __name__ == "__main__":
 	client = article_client(sys.stdout)
 #	client.start_client('output'+sys.argv[1]+'.DOT')
-	if sys.argv[2] == 'verbose': verbose = True
+	if len(sys.argv) > 2 and sys.argv[2] == 'verbose': verbose = True
 	client.parseText(open(sys.argv[1],'r').read())

@@ -8,7 +8,7 @@ def f(num):
 	client.start_client()
 	return True
 
-NPROCESSES = 7
+NPROCESSES = 6
 
 if __name__ == '__main__':
     #zmq_wikiarticle_client.verbose = True
